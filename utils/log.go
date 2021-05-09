@@ -7,6 +7,7 @@ import (
 )
 
 func GetLogger() *logrus.Logger {
+
 	return &logrus.Logger{
 
 		Out: os.Stderr,
@@ -16,5 +17,19 @@ func GetLogger() *logrus.Logger {
 		Hooks: make(logrus.LevelHooks),
 
 		Level: logrus.DebugLevel,
+	}
+}
+
+func GetPAPLogger() *logrus.Logger {
+
+	return &logrus.Logger{
+
+		Out: os.Stderr,
+
+		Formatter: new(logrus.TextFormatter),
+
+		Hooks: make(logrus.LevelHooks),
+
+		Level: logrus.ErrorLevel,
 	}
 }
